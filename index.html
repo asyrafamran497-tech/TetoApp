@@ -2,88 +2,88 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Teto App</title>
+    <title>Teto Tsundere App</title>
     <style>
-        body { font-family: sans-serif; text-align: center; padding: 20px; }
-        
-        /* Pengaturan Gambar: Ukuran kotak dan posisi */
-        .teto-img { 
-            width: 200px; 
-            height: 200px; 
-            object-fit: cover; 
-            border-radius: 15px; 
-            margin: 20px auto; 
-            display: block; 
-        }
-
-        #chat-area { 
-            border: 1px solid #ddd; 
-            padding: 15px; 
-            text-align: left; 
-            height: 200px; 
-            overflow-y: auto; 
-            margin-top: 20px; 
-            width: 90%; 
-            margin-left: auto; 
-            margin-right: auto;
-        }
-
-        .controls { margin-top: 20px; }
+        body { font-family: sans-serif; text-align: center; background: #fff0f5; padding: 20px; }
+        .teto-img { width: 300px; height: 300px; object-fit: cover; border-radius: 20px; margin: 20px auto; display: block; }
+        #chat-area { border: 2px solid #ff69b4; padding: 15px; height: 250px; overflow-y: auto; width: 90%; margin: 10px auto; background: white; text-align: left; border-radius: 10px; }
+        input { padding: 10px; width: 70%; }
+        button { padding: 10px; }
     </style>
 </head>
 <body>
-
-    <h1>Teto AI</h1>
-    <img src="teto_diam.jpg" alt="Teto" class="teto-img">
-    
-    <div class="controls">
-        <input type="text" id="userInput" placeholder="Tanya sesuatu ke Teto..." style="width: 70%; padding: 10px;">
-        <button onclick="prosesChat()" style="padding: 10px;">Kirim</button>
-    </div>
-
-    <div id="chat-area">Teto: Halo! Apa yang ingin kamu bicarakan?</div>
-
-    <div id="apiKeyPanel" style="margin-top: 30px; padding: 15px; border-top: 2px solid #eee;">
-        <small>Pengaturan API:</small><br>
-        <input type="password" id="keyInput" placeholder="Masukkan API Key...">
-        <button onclick="simpanKey()">Simpan Key</button>
-    </div>
+    <h2 id="status">Teto: ...</h2>
+    <!-- Foto awal pakai JPG -->
+    <img src="teto_ngambek.jpg" id="tetoFoto" class="teto-img">
+    <div id="chat-area">Teto: Hah? Ngapain lo di sini?</div>
+    <input type="text" id="userInput" placeholder="Tanya sesuatu...">
+    <button onclick="prosesChat()">Kirim</button>
 
     <script>
-        // Load Key
-        let API_KEY = localStorage.getItem('gemini_key');
+        let affection = parseInt(localStorage.getItem('teto_affection')) || 0;
+        let histori = JSON.parse(localStorage.getItem('teto_histori')) || [];
+        let fotoSatu = true;
+        let intervalAnimasi = null;
 
-        function simpanKey() {
-            let key = document.getElementById('keyInput').value;
-            if (key) {
-                localStorage.setItem('gemini_key', key);
-                alert("Key tersimpan!");
-                location.reload();
+        // Fungsi Animasi: Gonta-ganti antara JPG dan PNG saat bicara
+        function animasiBicara(aktif) {
+            if (aktif) {
+                intervalAnimasi = setInterval(() => {
+                    document.getElementById('tetoFoto').src = fotoSatu ? "teto_ngambek.jpg" : "teto_ngambek.png";
+                    fotoSatu = !fotoSatu;
+                }, 300);
+            } else {
+                clearInterval(intervalAnimasi);
+                // Balik ke JPG saat selesai bicara
+                document.getElementById('tetoFoto').src = "teto_ngambek.jpg";
             }
         }
 
         async function prosesChat() {
-            let currentKey = localStorage.getItem('gemini_key');
-            if (!currentKey) { alert("Masukkan API Key dulu di bawah!"); return; }
-            
             let input = document.getElementById("userInput").value;
+            if (!input) return;
+            
+            let key = localStorage.getItem('gemini_key');
             let display = document.getElementById("chat-area");
-            
-            display.innerHTML += "<br><br><b>Kamu:</b> " + input;
-            
-            try {
-                let response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=" + currentKey, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ contents: [{ parts: [{ text: input }] }] })
-                });
-                let data = await response.json();
-                let jawaban = data.candidates[0].content.parts[0].text;
-                display.innerHTML += "<br><br><b>Teto:</b> " + jawaban;
-            } catch (e) {
-                display.innerHTML += "<br><br><b>Teto:</b> Error, cek API Key!";
+            let status = document.getElementById("status");
+
+            display.innerHTML += "<br><b>Kamu:</b> " + input;
+            document.getElementById("userInput").value = "";
+            animasiBicara(true); // Animasi mulai
+
+            affection++;
+            localStorage.setItem('teto_affection', affection);
+            histori.push(input);
+            localStorage.setItem('teto_histori', JSON.stringify(histori));
+
+            let sapaan = affection > 5 ? "Kamu..." : "Oi,";
+            let respon = "";
+
+            if (key) {
+                status.innerText = "Mood: Good Mood (Tsundere) 😊";
+                try {
+                    let res = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=" + key, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ contents: [{ parts: [{ text: `Berperan sebagai Teto Tsundere. Poin kedekatan: ${affection}. Makin tinggi makin halus. Respon: ${input}` }] }] })
+                    });
+                    let data = await res.json();
+                    if (data.error) throw new Error("Kredit Habis");
+                    respon = data.candidates[0].content.parts[0].text;
+                } catch(e) {
+                    respon = `${sapaan} kredit gue abis! Puas lo?! Nih cari sendiri di Google.`;
+                    window.open("https://duckduckgo.com/?q=" + encodeURIComponent(input), '_blank');
+                }
+            } else {
+                status.innerText = "Mood: Ngambek (Mode Search) 😡";
+                respon = `${sapaan} dasar beban! Gak punya API Key malah nanya ke gue. Cari sendiri sana!`;
+                window.open("https://duckduckgo.com/?q=" + encodeURIComponent(input), '_blank');
             }
+
+            setTimeout(() => {
+                display.innerHTML += `<br><b>Teto:</b> ${respon}`;
+                animasiBicara(false); // Animasi berhenti
+            }, 1000);
         }
     </script>
 </body>
