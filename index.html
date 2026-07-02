@@ -14,7 +14,8 @@
 
     <div class="admin-panel">
         <strong>Teto Settings:</strong><br>
-        <input type="password" id="apiKey" placeholder="Masukkan Gemini API Key...">
+        <!-- Tipe text agar bisa paste dari clipboard -->
+        <input type="text" id="apiKey" placeholder="Paste API Key di sini...">
         <button onclick="saveKey()">Simpan</button>
     </div>
 
@@ -25,7 +26,6 @@
     <button onclick="prosesChat()">Kirim</button>
 
     <script>
-        // Cek status saat halaman dimuat
         function updateStatus() {
             let key = localStorage.getItem('gemini_key');
             document.getElementById('status').innerText = key ? "Mood: Good Mood (Tsundere) 😊" : "Mood: Ngambek (Mode Search) 😡";
@@ -50,21 +50,35 @@
             document.getElementById("userInput").value = "";
 
             if (key) {
+                // Mencoba Gemini
                 try {
                     let res = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=" + key, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ contents: [{ parts: [{ text: "Berperan sebagai Teto Tsundere yang ramah tapi cuek. Rangkum jawaban dari: " + input }] }] })
+                        body: JSON.stringify({ contents: [{ parts: [{ text: "Berperan sebagai Teto Tsundere. Rangkum jawaban dari: " + input }] }] })
                     });
                     let data = await res.json();
-                    let respon = data.candidates[0].content.parts[0].text;
-                    display.innerHTML += "<br><br><b>Teto:</b> " + respon;
+                    display.innerHTML += "<br><br><b>Teto:</b> " + data.candidates[0].content.parts[0].text;
                 } catch(e) {
-                    display.innerHTML += "<br><br><b>Teto:</b> (Ngomel) Kredit gue abis atau servernya lagi lemot! Dasar manja, nih gue cariin manual: Gunakan DuckDuckGo untuk mencari '" + input + "' karena API gue lagi nggak mood.";
+                    performSearch(input, display);
                 }
             } else {
-                // MODE NGAMBEK FULL
-                display.innerHTML += "<br><br><b>Teto:</b> (Ngomel) Gak punya API Key malah nyuruh-nyuruh! Cari sendiri sana di DuckDuckGo. Dasar beban!";
+                performSearch(input, display);
+            }
+        }
+
+        async function performSearch(query, display) {
+            display.innerHTML += "<br><br><b>Teto:</b> (Ngomel) Gak punya API Key/Error! Ya udah, gue cariin di web, jangan manja...";
+            try {
+                // Menggunakan API pihak ketiga untuk mengambil hasil search DuckDuckGo
+                let url = "https://api.duckduckgo.com/?q=" + encodeURIComponent(query) + "&format=json";
+                let res = await fetch("https://api.allorigins.win/get?url=" + encodeURIComponent(url));
+                let data = await res.json();
+                let json = JSON.parse(data.contents);
+                let hasil = json.AbstractText || "Gue dapet ini di web: " + (json.RelatedTopics[0]?.Text || "Gak ketemu apa-apa, dasar aneh!");
+                display.innerHTML += "<br><br><b>Teto (Search):</b> " + hasil;
+            } catch(e) {
+                display.innerHTML += "<br><br><b>Teto:</b> Internet lagi gangguan, cari sendiri sana!";
             }
         }
     </script>
