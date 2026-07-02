@@ -5,37 +5,68 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Teto Tsundere App</title>
     <style>
-        body { font-family: sans-serif; text-align: center; background: #fff0f5; padding: 10px; }
-        .media-container { width: 95%; aspect-ratio: 1 / 1; margin: 10px auto; border: 4px solid #ff69b4; border-radius: 20px; overflow: hidden; }
+        body { font-family: sans-serif; text-align: center; background: #fff0f5; padding: 15px; }
+        
+        /* Foto Kotak Sempurna */
+        .media-container { width: 95%; aspect-ratio: 1 / 1; margin: 10px auto; border: 4px solid #ff69b4; border-radius: 20px; overflow: hidden; background: white; }
         .media-container img { width: 100%; height: 100%; object-fit: cover; }
         
-        /* Chat box diperbesar */
-        #chat-area { border: 3px solid #ff69b4; padding: 20px; height: 450px; overflow-y: auto; width: 95%; margin: 10px auto; background: white; text-align: left; border-radius: 15px; font-size: 18px; }
+        /* Chat Box Besar */
+        #chat-area { border: 3px solid #ff69b4; padding: 20px; height: 400px; overflow-y: auto; width: 95%; margin: 10px auto; background: white; text-align: left; border-radius: 15px; font-size: 18px; }
         
-        /* Input & Button diperbesar */
-        #userInput { width: 70%; padding: 15px; font-size: 18px; border: 2px solid #ff69b4; border-radius: 10px; }
-        button { padding: 15px 20px; font-size: 18px; }
+        /* Panel & Input Besar */
+        .admin-panel { background: #ffe4e1; padding: 20px; border-radius: 15px; border: 2px solid #ff69b4; margin-bottom: 20px; }
+        #apiKey { width: 70%; padding: 15px; font-size: 18px; margin-bottom: 10px; border-radius: 10px; border: 1px solid #ccc; }
+        button { padding: 15px 25px; font-size: 18px; cursor: pointer; border-radius: 10px; background: #ff69b4; color: white; border: none; }
+        #status-msg { font-weight: bold; color: #d63384; margin-top: 10px; font-size: 16px; }
     </style>
 </head>
 <body>
 
     <div class="admin-panel">
-        <input type="text" id="apiKey" placeholder="Paste API Key...">
-        <button onclick="saveKey()">Simpan</button>
+        <strong>Teto Settings:</strong><br>
+        <input type="text" id="apiKey" placeholder="Paste API Key di sini...">
+        <button onclick="testAndSaveKey()">Simpan & Cek</button>
+        <div id="status-msg">Status: Belum ada API Key</div>
     </div>
 
+    <h2 id="mood-title">Mood: Ngambek 😡</h2>
     <div class="media-container">
         <img src="teto_ngambek.jpg" id="tetoImg">
     </div>
 
     <div id="chat-area">Teto: Hah? Ngapain lo di sini?</div>
-    <input type="text" id="userInput" placeholder="Tanya sesuatu...">
-    <button onclick="handleChat()">Kirim</button>
+    <input type="text" id="userInput" placeholder="Tanya sesuatu..." style="width: 70%; padding: 15px; font-size: 18px;">
+    <button onclick="handleChat()" style="padding: 15px;">Kirim</button>
 
     <script>
-        function saveKey() {
-            localStorage.setItem('gemini_key', document.getElementById('apiKey').value);
-            alert("Key tersimpan!");
+        async function testAndSaveKey() {
+            let key = document.getElementById('apiKey').value;
+            let msg = document.getElementById('status-msg');
+            let img = document.getElementById('tetoImg');
+            let title = document.getElementById('mood-title');
+
+            msg.innerText = "Mengecek...";
+            
+            try {
+                let res = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + key, {
+                    method: "POST", headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: "hi" }] }] })
+                });
+
+                if (res.status === 200) {
+                    localStorage.setItem('gemini_key', key);
+                    msg.innerText = "Status: Key Valid! 😊";
+                    title.innerText = "Mood: Good Mood (Tsundere) 😊";
+                    img.src = "teto_good.jpg"; // Pastikan kamu punya file teto_good.jpg
+                } else {
+                    msg.innerText = "Status: Key Salah / Kredit Habis! ❌";
+                    title.innerText = "Mood: Ngambek 😡";
+                    img.src = "teto_ngambek.jpg";
+                }
+            } catch(e) {
+                msg.innerText = "Status: Gagal koneksi!";
+            }
         }
 
         async function handleChat() {
@@ -47,14 +78,7 @@
             display.innerHTML += "<br><br><b>Kamu:</b> " + input;
             document.getElementById("userInput").value = "";
 
-            // Deteksi kata kunci gambar
-            let keywords = ['foto', 'poto', 'photo', 'gambar', 'image'];
-            if (keywords.some(word => input.toLowerCase().includes(word))) {
-                let imgUrl = "https://source.unsplash.com/random/400x400/? " + encodeURIComponent(input);
-                display.innerHTML += `<br><br><b>Teto:</b> Nih, gue ambilin gambar '${input}' buat lo! <br><img src="${imgUrl}" style="width:100%; border-radius:10px;">`;
-            } 
-            // Cek API Key & Proses Search
-            else if (key && key.length > 10) {
+            if (key && document.getElementById('mood-title').innerText.includes("Good")) {
                 try {
                     let res = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + key, {
                         method: "POST", headers: { "Content-Type": "application/json" },
@@ -62,14 +86,10 @@
                     });
                     let data = await res.json();
                     display.innerHTML += "<br><br><b>Teto:</b> " + data.candidates[0].content.parts[0].text;
-                } catch(e) { display.innerHTML += "<br><br><b>Teto:</b> API Error. Cari sendiri!"; }
+                } catch(e) { display.innerHTML += "<br><br><b>Teto:</b> API Error!"; }
             } else {
-                // Fetch DuckDuckGo langsung di dalam chat (tidak nendang)
-                display.innerHTML += "<br><br><b>Teto:</b> (Ngomel) Gak punya API! Bentar gue cariin di web...";
-                let res = await fetch("https://api.duckduckgo.com/?q=" + encodeURIComponent(input) + "&format=json");
-                let data = await res.json();
-                let ans = data.AbstractText || "Gak dapet info!";
-                display.innerHTML += "<br><br><b>Teto (Search):</b> " + ans;
+                display.innerHTML += "<br><br><b>Teto:</b> (Ngambek) API nggak valid! Cari sendiri di Google.";
+                window.open("https://duckduckgo.com/?q=" + encodeURIComponent(input), '_blank');
             }
             display.scrollTop = display.scrollHeight;
         }
