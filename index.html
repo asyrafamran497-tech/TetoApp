@@ -5,40 +5,70 @@
     <title>Teto Tsundere App</title>
     <style>
         body { font-family: sans-serif; text-align: center; background: #fff0f5; padding: 10px; }
-        .teto-img { width: 250px; height: 250px; object-fit: cover; border-radius: 20px; margin: 10px auto; display: block; border: 3px solid #ff69b4; }
+        
+        /* FOTO SEKARANG KOTAK OTOMATIS */
+        .teto-img { 
+            width: 95%; 
+            max-width: 400px; 
+            aspect-ratio: 1 / 1; 
+            object-fit: cover; 
+            border-radius: 20px; 
+            margin: 10px auto; 
+            display: block; 
+            border: 3px solid #ff69b4; 
+        }
+
         #chat-area { border: 2px solid #ff69b4; padding: 15px; height: 300px; overflow-y: auto; width: 95%; margin: 10px auto; background: white; text-align: left; border-radius: 10px; }
         .admin-panel { background: #ffe4e1; padding: 15px; border-radius: 15px; margin-bottom: 15px; border: 1px solid #ff69b4; }
+        #status-msg { font-weight: bold; color: #ff1493; margin-top: 5px; }
     </style>
 </head>
 <body>
 
     <div class="admin-panel">
         <strong>Teto Settings:</strong><br>
-        <!-- Tipe text agar bisa paste dari clipboard -->
         <input type="text" id="apiKey" placeholder="Paste API Key di sini...">
-        <button onclick="saveKey()">Simpan</button>
+        <button onclick="testAndSaveKey()">Simpan & Cek</button>
+        <div id="status-msg">Belum ada API Key.</div>
     </div>
 
-    <h2 id="status">Mood: Loading...</h2>
+    <h2 id="mood-title">Mood: Ngambek (Mode Search) 😡</h2>
+    
+    <!-- Foto ini akan selalu kotak, tidak peduli aslinya lonjong -->
     <img src="teto_ngambek.jpg" id="tetoFoto" class="teto-img">
+    
     <div id="chat-area">Teto: Hah? Ngapain lo di sini?</div>
     <input type="text" id="userInput" placeholder="Tanya sesuatu...">
     <button onclick="prosesChat()">Kirim</button>
 
     <script>
-        function updateStatus() {
-            let key = localStorage.getItem('gemini_key');
-            document.getElementById('status').innerText = key ? "Mood: Good Mood (Tsundere) 😊" : "Mood: Ngambek (Mode Search) 😡";
-        }
+        async function testAndSaveKey() {
+            let key = document.getElementById('apiKey').value;
+            let msg = document.getElementById('status-msg');
+            msg.innerText = "Mengecek Key...";
 
-        function saveKey() {
-            localStorage.setItem('gemini_key', document.getElementById('apiKey').value);
-            updateStatus();
-            alert("Key tersimpan!");
-        }
+            try {
+                let res = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=" + key, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: "hi" }] }] })
+                });
 
-        document.getElementById('apiKey').value = localStorage.getItem('gemini_key') || "";
-        updateStatus();
+                if (res.status === 200) {
+                    localStorage.setItem('gemini_key', key);
+                    msg.innerText = "Status: Key Valid! 😊";
+                    document.getElementById('mood-title').innerText = "Mood: Good Mood (Tsundere) 😊";
+                } else if (res.status === 400 || res.status === 403) {
+                    msg.innerText = "Status: Key Tidak Valid! ❌";
+                    document.getElementById('mood-title').innerText = "Mood: Ngambek (Mode Search) 😡";
+                } else if (res.status === 429) {
+                    msg.innerText = "Status: Kredit Habis! 💸";
+                    document.getElementById('mood-title').innerText = "Mood: Ngambek (Mode Search) 😡";
+                }
+            } catch(e) {
+                msg.innerText = "Status: Gagal koneksi ke server.";
+            }
+        }
 
         async function prosesChat() {
             let input = document.getElementById("userInput").value;
@@ -50,36 +80,30 @@
             document.getElementById("userInput").value = "";
 
             if (key) {
-                // Mencoba Gemini
                 try {
                     let res = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=" + key, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ contents: [{ parts: [{ text: "Berperan sebagai Teto Tsundere. Rangkum jawaban dari: " + input }] }] })
+                        body: JSON.stringify({ contents: [{ parts: [{ text: "Rangkum jawaban dari: " + input }] }] })
                     });
                     let data = await res.json();
                     display.innerHTML += "<br><br><b>Teto:</b> " + data.candidates[0].content.parts[0].text;
-                } catch(e) {
-                    performSearch(input, display);
-                }
+                } catch(e) { performSearch(input, display); }
             } else {
                 performSearch(input, display);
             }
         }
 
         async function performSearch(query, display) {
-            display.innerHTML += "<br><br><b>Teto:</b> (Ngomel) Gak punya API Key/Error! Ya udah, gue cariin di web, jangan manja...";
+            display.innerHTML += "<br><br><b>Teto:</b> (Ngomel) Gak punya API Key/Error! Ya udah, gue cariin di web ya...";
             try {
-                // Menggunakan API pihak ketiga untuk mengambil hasil search DuckDuckGo
                 let url = "https://api.duckduckgo.com/?q=" + encodeURIComponent(query) + "&format=json";
                 let res = await fetch("https://api.allorigins.win/get?url=" + encodeURIComponent(url));
                 let data = await res.json();
                 let json = JSON.parse(data.contents);
-                let hasil = json.AbstractText || "Gue dapet ini di web: " + (json.RelatedTopics[0]?.Text || "Gak ketemu apa-apa, dasar aneh!");
-                display.innerHTML += "<br><br><b>Teto (Search):</b> " + hasil;
-            } catch(e) {
-                display.innerHTML += "<br><br><b>Teto:</b> Internet lagi gangguan, cari sendiri sana!";
-            }
+                let hasil = json.AbstractText || json.RelatedTopics[0]?.Text || "Gak ketemu apa-apa, dasar aneh!";
+                display.innerHTML += "<br><br><b>Teto:</b> " + hasil;
+            } catch(e) { display.innerHTML += "<br><br><b>Teto:</b> Internet gangguan, cari sendiri sana!"; }
         }
     </script>
 </body>
