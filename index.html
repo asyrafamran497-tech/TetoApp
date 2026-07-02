@@ -2,31 +2,24 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Teto Tsundere App</title>
     <style>
-        body { font-family: sans-serif; text-align: center; background: #fff0f5; padding: 10px; }
+        body { font-family: sans-serif; text-align: center; background: #fff0f5; padding: 15px; font-size: 18px; }
+        .teto-img { width: 95%; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 20px; margin: 10px auto; display: block; border: 4px solid #ff69b4; }
         
-        /* Foto jadi kotak sempurna seukuran chat box */
-        .teto-img { 
-            width: 95% !important; 
-            aspect-ratio: 1 / 1; 
-            object-fit: cover; 
-            border-radius: 15px; 
-            margin: 10px auto; 
-            display: block; 
-            border: 2px solid #ff69b4; 
-        }
-
-        #chat-area { border: 2px solid #ff69b4; padding: 15px; height: 300px; overflow-y: auto; width: 95%; margin: 10px auto; background: white; text-align: left; border-radius: 10px; }
-        .admin-panel { background: #ffe4e1; padding: 15px; border-radius: 15px; margin-bottom: 15px; border: 1px solid #ff69b4; }
-        #status-msg { font-weight: bold; color: #ff1493; margin-top: 5px; }
+        /* Chat box dan input lebih besar */
+        #chat-area { border: 3px solid #ff69b4; padding: 20px; height: 400px; overflow-y: auto; width: 95%; margin: 10px auto; background: white; text-align: left; border-radius: 15px; font-size: 18px; line-height: 1.5; }
+        .admin-panel { background: #ffe4e1; padding: 20px; border-radius: 15px; margin-bottom: 20px; border: 2px solid #ff69b4; }
+        input { padding: 15px; width: 80%; font-size: 18px; margin-bottom: 10px; }
+        button { padding: 15px; font-size: 18px; cursor: pointer; }
     </style>
 </head>
 <body>
 
     <div class="admin-panel">
         <strong>Teto Settings:</strong><br>
-        <input type="text" id="apiKey" placeholder="Paste API Key di sini...">
+        <input type="text" id="apiKey" placeholder="Paste API Key...">
         <button onclick="testAndSaveKey()">Simpan & Cek</button>
         <div id="status-msg">Belum ada API Key.</div>
     </div>
@@ -34,18 +27,10 @@
     <h2 id="mood-title">Mood: Ngambek (Mode Search) 😡</h2>
     <img src="teto_ngambek.jpg" id="tetoFoto" class="teto-img">
     <div id="chat-area">Teto: Hah? Ngapain lo di sini?</div>
-    <input type="text" id="userInput" placeholder="Tanya sesuatu...">
-    <button onclick="prosesChat()">Kirim</button>
+    <input type="text" id="userInput" placeholder="Tanya sesuatu..." style="width: 80%; padding: 15px;">
+    <button onclick="prosesChat()" style="padding: 15px;">Kirim</button>
 
     <script>
-        // Cek status saat halaman dimuat
-        window.onload = () => {
-            if(localStorage.getItem('gemini_key')) {
-                document.getElementById('mood-title').innerText = "Mood: Good Mood (Tsundere) 😊";
-                document.getElementById('apiKey').value = localStorage.getItem('gemini_key');
-            }
-        };
-
         async function testAndSaveKey() {
             let key = document.getElementById('apiKey').value;
             let msg = document.getElementById('status-msg');
@@ -53,53 +38,52 @@
 
             try {
                 let res = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + key, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
+                    method: "POST", headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ contents: [{ parts: [{ text: "hi" }] }] })
                 });
 
-                if (res.ok) {
+                if (res.status === 200) {
                     localStorage.setItem('gemini_key', key);
                     msg.innerText = "Status: Key Valid! 😊";
                     document.getElementById('mood-title').innerText = "Mood: Good Mood (Tsundere) 😊";
-                } else {
-                    msg.innerText = "Status: Key Salah / Kredit Habis! ❌";
-                    document.getElementById('mood-title').innerText = "Mood: Ngambek (Mode Search) 😡";
+                } else if (res.status === 403) {
+                    msg.innerText = "Status: Key Salah (Forbidden)! ❌";
+                } else if (res.status === 429) {
+                    msg.innerText = "Status: Kredit Habis (Quota Exceeded)! 💸";
                 }
-            } catch(e) {
-                msg.innerText = "Status: Gagal koneksi.";
-            }
+            } catch(e) { msg.innerText = "Status: Gagal koneksi."; }
         }
 
         async function prosesChat() {
             let input = document.getElementById("userInput").value;
             let key = localStorage.getItem('gemini_key');
             let display = document.getElementById("chat-area");
-
             if (!input) return;
-            display.innerHTML += "<br><b>Kamu:</b> " + input;
+
+            display.innerHTML += "<br><br><b>Kamu:</b> " + input;
             document.getElementById("userInput").value = "";
 
             if (key) {
                 try {
                     let res = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + key, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ contents: [{ parts: [{ text: "Berperanlah sebagai Teto Tsundere. Rangkum jawaban ini secara singkat: " + input }] }] })
+                        method: "POST", headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ contents: [{ parts: [{ text: "Teto, rangkum jawaban untuk: " + input }] }] })
                     });
                     let data = await res.json();
-                    display.innerHTML += "<br><b>Teto:</b> " + data.candidates[0].content.parts[0].text;
-                } catch(e) {
-                    fallbackSearch(input, display);
-                }
-            } else {
-                fallbackSearch(input, display);
-            }
+                    display.innerHTML += "<br><br><b>Teto:</b> " + data.candidates[0].content.parts[0].text;
+                } catch(e) { fetchDuckDuckGo(input, display); }
+            } else { fetchDuckDuckGo(input, display); }
         }
 
-        function fallbackSearch(query, display) {
-            display.innerHTML += "<br><b>Teto:</b> (Ngomel) API gue lagi mati! Nih, cari sendiri di Google sana, dasar beban!";
-            window.open("https://duckduckgo.com/?q=" + encodeURIComponent(query), '_blank');
+        async function fetchDuckDuckGo(query, display) {
+            display.innerHTML += "<br><br><b>Teto:</b> (Ngomel) API gue lagi mati! Tunggu, gue cariin di web ya...";
+            try {
+                // Mengambil hasil pencarian tanpa pindah halaman
+                let res = await fetch("https://api.duckduckgo.com/?q=" + encodeURIComponent(query) + "&format=json");
+                let data = await res.json();
+                let jawaban = data.AbstractText || "Gak dapet jawaban spesifik, cari sendiri sana!";
+                display.innerHTML += "<br><br><b>Teto (Search):</b> " + jawaban;
+            } catch(e) { display.innerHTML += "<br><br><b>Teto:</b> Internet gangguan!"; }
         }
     </script>
 </body>
