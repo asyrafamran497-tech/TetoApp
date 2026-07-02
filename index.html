@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kasane Teto App</title>
+    
+    <!-- PANGGIL LOADER DISINI -->
+    <script src="loader.js"></script>
+    
+    <style>
+        /* CSS kamu tetap di sini */
+    </style>
+</head>
+<body>
+
+    <div id="loginOverlay">
+        <h3>Teto butuh nama.</h3>
+        <input type="text" id="inputNama" class="input-text" placeholder="Nama...">
+        <button class="btn" onclick="login()">Masuk</button>
+    </div>
+
+    <p id="tetoStatus" style="font-size:14px; color:#ff4d6d; font-weight:bold;"></p>
+    
+    <div class="avatar-container" id="containerAvatar">
+        <div id="videoOverlay" class="hidden" style="position:absolute; top:0; left:0; width:100%; height:25%; z-index:999;">
+            <iframe id="ytIframe" width="100%" height="100%" frameborder="0" allow="autoplay"></iframe>
+            <button onclick="tutupVideo()" style="position:absolute; top:0; right:0; background:red; color:white; border:none;">X</button>
+        </div>
+        <img id="tetoDiam" class="avatar" src="teto_diam.jpg">
+        <video id="tetoBicara" class="avatar hidden" loop muted playsinline><source src="teto_bicara.mp4"></video>
+    </div>
+
+    <div class="chat-box" id="teksBalasan">"Hm?"</div>
+
+    <div class="input-area">
+        <input type="text" id="userInput" class="input-text" placeholder="Ketik...">
+        <button class="btn" onclick="kirimKeAI()">Kirim</button>
+    </div>
+
+    <button onclick="toggleAdmin()" style="margin-top:10px; background:none; border:1px solid #444; color:#888; cursor:pointer;">⚙️ Admin Control</button>
+    <div id="adminPanel" class="hidden" style="background:#222; padding:10px; margin-top:5px; border-radius:10px; border:1px solid #ff4d6d;">
+        <p id="adminInfo" style="font-size:10px;"></p>
+        <button class="btn" onclick="resetMemory()">Reset Memori</button>
+    </div>
+
+    <script>
+        // Ganti bagian lama dengan kode ini:
+let API_KEY = localStorage.getItem('gemini_key');
+
+if (!API_KEY) {
+    API_KEY = prompt("Masukkan API Key Gemini Anda:");
+    if (API_KEY) {
+        localStorage.setItem('gemini_key', API_KEY);
+    }
+}
+
+        let memory = JSON.parse(localStorage.getItem('tetoGrowth')) || { namaUser: "", firstDate: new Date().getTime(), totalChat: 0, dataPribadi: [] };
+
+        function login() {
+            let n = document.getElementById('inputNama').value;
+            if(!n) return;
+            memory.namaUser = n;
+            localStorage.setItem('tetoGrowth', JSON.stringify(memory));
+            document.getElementById('loginOverlay').classList.add('hidden');
+        }
+
+        function toggleAdmin() { document.getElementById('adminPanel').classList.toggle('hidden'); document.getElementById('adminInfo').innerText = "Data: " + JSON.stringify(memory.dataPribadi); }
+        function resetMemory() { localStorage.removeItem('tetoGrowth'); location.reload(); }
+        function tutupVideo() { document.getElementById('videoOverlay').classList.add('hidden'); document.getElementById('ytIframe').src = ""; }
+
+        async function putarSuaraPerHuruf(text) {
+            const chars = text.split('');
+            for (let char of chars) {
+                const u = new SpeechSynthesisUtterance(char);
+                u.rate = 3.5;
+                window.speechSynthesis.speak(u);
+                await new Promise(r => setTimeout(r, 300));
+                window.speechSynthesis.cancel();
+            }
+        }
+
+        async function kirimKeAI() {
+            let text = document.getElementById('userInput').value.trim();
+            if(!text) return;
+            
+            const match = text.match(/(?:youtu\.be\/|youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=))([^"&?\/\s]{11})/);
+            if(match) { document.getElementById('ytIframe').src = `https://www.youtube.com/embed/${match[1]}?autoplay=1`; document.getElementById('videoOverlay').classList.remove('hidden'); return; }
+
+            document.getElementById('userInput').value = "";
+            memory.totalChat++;
+            if (text.includes("nama") || text.includes("adalah")) memory.dataPribadi.push(text);
+            localStorage.setItem('tetoGrowth', JSON.stringify(memory));
+
+            const isNyanyi = text.toLowerCase().includes("nyanyi");
+            document.getElementById('tetoStatus').innerText = isNyanyi ? "TETO LAGI NYANYI 🎵" : "";
+            document.getElementById('tetoDiam').classList.add('hidden');
+            document.getElementById('tetoBicara').classList.remove('hidden');
+
+            const sys = `Teto Kasane. Durasi: ${Math.floor((new Date().getTime()-memory.firstDate)/(86400000))} hari. Aturan: HARAM sebut subjek user. Jika hari > 30, ramah tapi tetap tsundere. Simpan info: ${JSON.stringify(memory.dataPribadi)}`;
+
+            try {
+                const res = await // Gunakan tanda plus (+) untuk menggabungkan variabel API_KEY
+                    fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=" + API_KEY `, {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ contents: [{ parts: [{ text: `${sys} User: "${text}"` }] }] })
+                });
+                const d = await res.json();
+                let ans = d.candidates[0].content.parts[0].text;
+                document.getElementById('teksBalasan').innerText = ans;
+                if(window.speechSynthesis) putarSuaraPerHuruf(ans);
+            } catch(e) { document.getElementById('teksBalasan').innerText = "Hmph."; }
+
+            setTimeout(() => { document.getElementById('tetoBicara').classList.add('hidden'); document.getElementById('tetoDiam').classList.remove('hidden'); document.getElementById('tetoStatus').innerText = ""; }, 5000);
+        }
+    </script>
+</body>
+</html>

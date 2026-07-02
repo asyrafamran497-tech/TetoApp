@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<widget xmlns="http://www.w3.org/ns/widgets" id="com.kasane.teto.app" version="1.0.0">
+    <name>Kasane Teto</name>
+    <description>
+        Teto Kasane AI Companion
+    </description>
+    <author email="kamu@email.com">
+        Pembuat Teto
+    </author>
+    <content src="index.html" />
+    <access origin="*" />
+    <preference name="Orientation" value="portrait" />
+</widget>
